@@ -1,0 +1,27 @@
+# Sumber kebenaran daftar aset.
+# px          : simbol Yahoo Finance (cadangan; ganti ke feed broker/MT5 bila sudah ada)
+# scored      : true = dapat skor bias; false = hanya jadi target repricing / konfirmasi
+# currencies  : mata uang yang relevan untuk filter risiko kalender
+# event_keywords : judul event non-"high" yang tetap dianggap relevan (mis. stok minyak)
+#
+# Catatan: kontrak futures kontinu (GC=F, CL=F, dst.) punya efek roll dan sedikit beda dari harga spot broker.
+
+assets:
+  XAUUSD: {name: "Emas (XAU/USD)",        class: metal,   px: "GC=F",      scored: true,  currencies: [USD]}
+  XAGUSD: {name: "Perak (XAG/USD)",       class: metal,   px: "SI=F",      scored: true,  currencies: [USD]}
+  US30:   {name: "Dow Jones (US30)",      class: index,   px: "^DJI",      scored: true,  currencies: [USD]}
+  US100:  {name: "Nasdaq 100 (US100)",    class: index,   px: "^NDX",      scored: true,  currencies: [USD]}
+  USOIL:  {name: "Minyak WTI",            class: energy,  px: "CL=F",      scored: true,  currencies: [USD], event_keywords: ["Crude Oil Inventories", "OPEC"]}
+  UKOIL:  {name: "Minyak Brent",          class: energy,  px: "BZ=F",      scored: true,  currencies: [USD], event_keywords: ["Crude Oil Inventories", "OPEC"]}
+  EURUSD: {name: "EUR/USD",               class: fx,      px: "EURUSD=X",  scored: true,  currencies: [EUR, USD]}
+  GBPUSD: {name: "GBP/USD",               class: fx,      px: "GBPUSD=X",  scored: true,  currencies: [GBP, USD]}
+  USDJPY: {name: "USD/JPY",               class: fx,      px: "JPY=X",     scored: true,  currencies: [USD, JPY]}
+  USDCAD: {name: "USD/CAD",               class: fx,      px: "CAD=X",     scored: true,  currencies: [USD, CAD]}
+  AUDUSD: {name: "AUD/USD",               class: fx,      px: "AUDUSD=X",  scored: true,  currencies: [AUD, USD]}
+  USDIDR: {name: "USD/IDR",               class: fx,      px: "IDR=X",     scored: true,  currencies: [USD, IDR]}
+  # konfirmasi / target repricing saja
+  XLE:    {name: "ETF Energi (XLE)",      class: confirm, px: "XLE",       scored: false, currencies: [USD]}
+  COPPER: {name: "Tembaga (HG)",          class: confirm, px: "HG=F",      scored: false, currencies: [USD]}
+
+# Simbol harga tambahan (bukan aset yang dinilai): dipakai untuk deteksi rezim.
+extra_px: ["^GSPC", "DX-Y.NYB"]

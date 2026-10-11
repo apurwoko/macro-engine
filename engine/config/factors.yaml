@@ -1,0 +1,117 @@
+# Faktor & bobot awal per aset. INI TITIK AWAL BERBASIS LOGIKA MAKRO, bukan hasil kalibrasi.
+# Kalibrasi lewat `python -m app.cli backtest <ASET>` sebelum dipercaya.
+#
+# Setiap faktor:
+#   source     : fred:ID | eia:ID | px:SIMBOL | cot:KUNCI | news
+#   transform  : level | diff | pct          (diff/pct dihitung atas `window` observasi)
+#   window     : jumlah observasi (default 20)
+#   lookback   : jumlah observasi untuk z-score (default 750 ~ 3 tahun harian)
+#   direction  : +1 / -1  -> arah dampak ke harga aset (untuk pair: harga pair naik = bullish)
+#   weight     : bobot relatif
+#   max_age_days : data lebih tua dari ini dianggap basi dan dikecualikan
+#
+# z-score -> skor: |z|<0.5 => 0 ; <1.25 => +-1 ; selebihnya => +-2.
+# Skor total = sum(skor*bobot) / (2*sum(bobot)) -> rentang -1..+1.
+
+defaults:
+  threshold: 0.2        # |total| di bawah ini = netral
+
+assets:
+
+  XAUUSD:
+    factors:
+      - {name: real_yield_10y_20d, source: "fred:DFII10",   transform: diff,  window: 20, direction: -1, weight: 2.0}
+      - {name: usd_broad_20d,      source: "fred:DTWEXBGS",  transform: pct,   window: 20, direction: -1, weight: 1.5}
+      - {name: breakeven_5y_20d,   source: "fred:T5YIE",     transform: diff,  window: 20, direction: 1,  weight: 1.0}
+      - {name: us2y_20d,           source: "fred:DGS2",      transform: diff,  window: 20, direction: -1, weight: 0.5}
+      - {name: vix_level,          source: "fred:VIXCLS",    transform: level,               direction: 1,  weight: 0.5}
+      # kontrarian: posisi spekulan sangat long = rawan likuidasi
+      - {name: cot_gold_mm_net,    source: "cot:GOLD",       transform: level, lookback: 156, max_age_days: 12, direction: -1, weight: 0.5}
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 0.75}
+
+  XAGUSD:
+    factors:
+      - {name: real_yield_10y_20d, source: "fred:DFII10",   transform: diff,  window: 20, direction: -1, weight: 1.5}
+      - {name: usd_broad_20d,      source: "fred:DTWEXBGS",  transform: pct,   window: 20, direction: -1, weight: 1.5}
+      - {name: breakeven_5y_20d,   source: "fred:T5YIE",     transform: diff,  window: 20, direction: 1,  weight: 0.75}
+      - {name: copper_20d,         source: "px:HG=F",        transform: pct,   window: 20, direction: 1,  weight: 1.0}   # sisi industri
+      - {name: vix_level,          source: "fred:VIXCLS",    transform: level,               direction: 1,  weight: 0.25}
+      - {name: cot_silver_mm_net,  source: "cot:SILVER",     transform: level, lookback: 156, max_age_days: 12, direction: -1, weight: 0.5}
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 0.75}
+
+  US100:
+    factors: &us_equity
+      - {name: real_yield_10y_20d, source: "fred:DFII10",       transform: diff, window: 20, direction: -1, weight: 1.5}
+      - {name: us10y_20d,          source: "fred:DGS10",        transform: diff, window: 20, direction: -1, weight: 1.0}
+      - {name: vix_level,          source: "fred:VIXCLS",       transform: level,            direction: -1, weight: 1.0}
+      - {name: hy_spread_20d,      source: "fred:BAMLH0A0HYM2", transform: diff, window: 20, direction: -1, weight: 1.0}
+      - {name: fed_balance_13w,    source: "fred:WALCL",        transform: pct,  window: 13, lookback: 260, max_age_days: 14, direction: 1, weight: 0.5}
+      - {name: news_tone,          source: news,                                              direction: 1,  weight: 0.75}
+
+  US30:
+    factors: *us_equity     # sama dulu; pisahkan bobotnya setelah backtest (US30 kurang sensitif ke yield riil)
+
+  USOIL:
+    factors: &oil
+      # stok naik = bearish. CATATAN: perubahan stok sangat musiman; z-score belum menghilangkan musiman.
+      - {name: crude_stocks_wow,   source: "eia:WCESTUS1",   transform: diff,  window: 1,  lookback: 260, max_age_days: 14, direction: -1, weight: 1.5}
+      - {name: gasoline_stocks_wow, source: "eia:WGTSTUS1",  transform: diff,  window: 1,  lookback: 260, max_age_days: 14, direction: -1, weight: 0.5}
+      - {name: usd_broad_20d,      source: "fred:DTWEXBGS",  transform: pct,   window: 20, direction: -1, weight: 1.0}
+      - {name: copper_20d,         source: "px:HG=F",        transform: pct,   window: 20, direction: 1,  weight: 0.75}  # proksi permintaan industri
+      - {name: vix_level,          source: "fred:VIXCLS",    transform: level,               direction: -1, weight: 0.5}
+      - {name: cot_wti_mm_net,     source: "cot:WTI",        transform: level, lookback: 156, max_age_days: 12, direction: -1, weight: 0.5}
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 1.0}
+
+  UKOIL:
+    factors: *oil
+
+  EURUSD:
+    factors:
+      - {name: us2y_20d,           source: "fred:DGS2",      transform: diff,  window: 20, direction: -1, weight: 1.5}
+      - {name: usd_broad_20d,      source: "fred:DTWEXBGS",  transform: pct,   window: 20, direction: -1, weight: 1.5}
+      - {name: vix_level,          source: "fred:VIXCLS",    transform: level,               direction: -1, weight: 0.5}
+      - {name: cot_eur_lev_net,    source: "cot:EUR",        transform: level, lookback: 156, max_age_days: 12, direction: -1, weight: 0.5}  # kontrarian
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 0.75}
+
+  GBPUSD:
+    factors:
+      - {name: us2y_20d,           source: "fred:DGS2",      transform: diff,  window: 20, direction: -1, weight: 1.5}
+      - {name: usd_broad_20d,      source: "fred:DTWEXBGS",  transform: pct,   window: 20, direction: -1, weight: 1.5}
+      - {name: vix_level,          source: "fred:VIXCLS",    transform: level,               direction: -1, weight: 0.5}
+      - {name: cot_gbp_lev_net,    source: "cot:GBP",        transform: level, lookback: 156, max_age_days: 12, direction: -1, weight: 0.5}
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 0.75}
+
+  USDJPY:
+    factors:
+      - {name: us10y_20d,          source: "fred:DGS10",     transform: diff,  window: 20, direction: 1,  weight: 2.0}
+      - {name: us2y_20d,           source: "fred:DGS2",      transform: diff,  window: 20, direction: 1,  weight: 1.0}
+      - {name: vix_level,          source: "fred:VIXCLS",    transform: level,               direction: -1, weight: 1.0}  # risk-off => yen menguat
+      # net long JPY ekstrem = crowded; kontrarian => USDJPY naik
+      - {name: cot_jpy_lev_net,    source: "cot:JPY",        transform: level, lookback: 156, max_age_days: 12, direction: 1,  weight: 0.5}
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 0.75}
+
+  USDCAD:
+    factors:
+      - {name: wti_20d,            source: "fred:DCOILWTICO", transform: pct,  window: 20, direction: -1, weight: 1.5}
+      - {name: usd_broad_20d,      source: "fred:DTWEXBGS",  transform: pct,   window: 20, direction: 1,  weight: 1.5}
+      - {name: us2y_20d,           source: "fred:DGS2",      transform: diff,  window: 20, direction: 1,  weight: 0.75}
+      - {name: cot_cad_lev_net,    source: "cot:CAD",        transform: level, lookback: 156, max_age_days: 12, direction: 1,  weight: 0.5}
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 0.75}
+
+  AUDUSD:
+    factors:
+      - {name: copper_20d,         source: "px:HG=F",        transform: pct,   window: 20, direction: 1,  weight: 1.0}
+      - {name: vix_level,          source: "fred:VIXCLS",    transform: level,               direction: -1, weight: 1.0}
+      - {name: usd_broad_20d,      source: "fred:DTWEXBGS",  transform: pct,   window: 20, direction: -1, weight: 1.5}
+      - {name: us2y_20d,           source: "fred:DGS2",      transform: diff,  window: 20, direction: -1, weight: 0.75}
+      - {name: cot_aud_lev_net,    source: "cot:AUD",        transform: level, lookback: 156, max_age_days: 12, direction: -1, weight: 0.5}
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 0.75}
+
+  USDIDR:
+    # Kepercayaan rendah: faktor domestik Indonesia (BI rate, neraca dagang, arus asing) belum dimasukkan.
+    factors:
+      - {name: usd_broad_20d,      source: "fred:DTWEXBGS",  transform: pct,   window: 20, direction: 1,  weight: 1.5}
+      - {name: us10y_20d,          source: "fred:DGS10",     transform: diff,  window: 20, direction: 1,  weight: 1.0}
+      - {name: vix_level,          source: "fred:VIXCLS",    transform: level,               direction: 1,  weight: 1.0}
+      - {name: wti_20d,            source: "fred:DCOILWTICO", transform: pct,  window: 20, direction: 1,  weight: 0.5}  # Indonesia importir neto BBM
+      - {name: news_tone,          source: news,                                    direction: 1,  weight: 0.75}

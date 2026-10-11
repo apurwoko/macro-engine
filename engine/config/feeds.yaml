@@ -1,0 +1,6 @@
+# Feed RSS berita bank sentral / makro. VERIFIKASI URL saat setup (alamat feed bisa berubah).
+# Tambahkan feed OPEC/EIA/BI sesuai kebutuhan.
+feeds:
+  - {name: "Fed press",  url: "https://www.federalreserve.gov/feeds/press_all.xml"}
+  - {name: "ECB press",  url: "https://www.ecb.europa.eu/rss/press.html"}
+  - {name: "BoE news",   url: "https://www.bankofengland.co.uk/rss/news"}

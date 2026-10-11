@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+dist/
+*.zip
+vendor/
+node_modules/
+reports/*
+!reports/.gitkeep
+logs/
+deploy/.test_db_credentials
+deploy/bind_address.rollback

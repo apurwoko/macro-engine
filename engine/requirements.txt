@@ -1,0 +1,17 @@
+pandas>=2.2
+numpy>=1.26
+scipy>=1.11
+statsmodels>=0.14
+SQLAlchemy>=2.0
+PyMySQL>=1.1
+cryptography>=42          # dibutuhkan PyMySQL untuk auth caching_sha2_password (default MySQL 8)
+requests>=2.31
+yfinance>=0.2.40
+feedparser>=6.0
+PyYAML>=6.0
+fastapi>=0.110
+uvicorn[standard]>=0.29
+pydantic>=2.6
+APScheduler>=3.10,<4
+anthropic>=0.40
+pytest>=8.0

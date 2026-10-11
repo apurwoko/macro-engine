@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker compose:*)", "Bash(docker ps:*)", "Bash(docker images:*)", "Bash(docker logs:*)",
+      "Bash(python3 -m pytest:*)", "Bash(python -m pytest:*)",
+      "Bash(grep:*)", "Bash(ls:*)", "Bash(cat:*)", "Bash(head:*)", "Bash(tail:*)", "Bash(sed -n:*)",
+      "Bash(ss -ltn:*)", "Bash(mysql --version)", "Bash(ip -4 addr show:*)",
+      "Edit", "Write", "Read"
+    ],
+    "deny": ["Read(.env)", "Bash(cat .env)", "Bash(docker compose down -v:*)", "Bash(rm -rf:*)"]
+  }
+}

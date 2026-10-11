@@ -1,0 +1,15 @@
+# Pasar CFTC yang dilacak. net_pos = long - short untuk kelompok yang dipilih.
+#   report: disagg -> file fut_disagg_txt_<tahun>.zip (kelompok Managed Money)
+#           fin    -> file fut_fin_txt_<tahun>.zip    (kelompok Leveraged Funds)
+# Kode kontrak: VERIFIKASI pada ingest pertama (nama pasar yang cocok dicetak di log).
+backfill_from_year: 2014
+
+markets:
+  GOLD:   {report: disagg, code: "088691", long: M_Money_Positions_Long_All, short: M_Money_Positions_Short_All}
+  SILVER: {report: disagg, code: "084691", long: M_Money_Positions_Long_All, short: M_Money_Positions_Short_All}
+  WTI:    {report: disagg, code: "067651", long: M_Money_Positions_Long_All, short: M_Money_Positions_Short_All}
+  EUR:    {report: fin,    code: "099741", long: Lev_Money_Positions_Long_All, short: Lev_Money_Positions_Short_All}
+  JPY:    {report: fin,    code: "097741", long: Lev_Money_Positions_Long_All, short: Lev_Money_Positions_Short_All}
+  GBP:    {report: fin,    code: "096742", long: Lev_Money_Positions_Long_All, short: Lev_Money_Positions_Short_All}
+  CAD:    {report: fin,    code: "090741", long: Lev_Money_Positions_Long_All, short: Lev_Money_Positions_Short_All}
+  AUD:    {report: fin,    code: "232741", long: Lev_Money_Positions_Long_All, short: Lev_Money_Positions_Short_All}

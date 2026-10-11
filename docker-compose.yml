@@ -1,0 +1,56 @@
+name: macro-engine
+
+# Dashboard Laravel TIDAK ada di sini: jalankan di host (PHP-FPM/Nginx atau `php artisan serve`)
+# dan arahkan MACRO_ENGINE_URL ke http://127.0.0.1:8000. Lihat dashboard/README.md.
+
+x-engine-env: &engine-env
+  env_file: .env
+  restart: unless-stopped
+  volumes:
+    # laporan kalibrasi/backtest. Di host: mkdir -p reports && sudo chown 1000:1000 reports
+    - ./reports:/app/reports
+  depends_on:
+    mysql:
+      condition: service_healthy
+
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: macro_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-macro}
+      MYSQL_USER: ${MYSQL_USER:-macro}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_unicode_ci
+      - --default-time-zone=+00:00
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    ports:
+      - "127.0.0.1:3306:3306"
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$$MYSQL_ROOT_PASSWORD --silent"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+
+  api:
+    <<: *engine-env
+    build: ./engine
+    container_name: macro_api
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "127.0.0.1:8000:8000"
+
+  scheduler:
+    <<: *engine-env
+    build: ./engine
+    container_name: macro_scheduler
+    command: python -m app.scheduler
+
+volumes:
+  mysql_data:

@@ -1,0 +1,25 @@
+# Override lokal: pakai MySQL yang SUDAH ADA di host (bukan container mysql).
+# Lihat docs/ARCHITECTURE.md dan deploy/VPS_UBUNTU.md ("Memakai MySQL yang sudah ada").
+#
+# - service `mysql` dinonaktifkan lewat profile "internal-db" (tidak pernah start tanpa --profile internal-db)
+# - api & scheduler: hapus depends_on ke mysql (service itu tidak jalan), tambahkan host.docker.internal
+#
+# CATATAN (ditemukan empiris saat setup): "host.docker.internal:host-gateway" di Docker/Linux SELALU
+# resolve ke gateway bridge default `docker0` (172.17.0.1) -- BUKAN ke gateway network compose project
+# ini (macro-engine_default, 172.18.0.1), walau container berjalan di network itu. Karena itu bind-address
+# MySQL di host dibuka ke 172.17.0.1 (lihat deploy/sudo_steps.sh), bukan ke gateway network project.
+# Tidak perlu pin subnet network compose untuk ini.
+
+services:
+  mysql:
+    profiles: ["internal-db"]
+
+  api:
+    depends_on: !reset {}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  scheduler:
+    depends_on: !reset {}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

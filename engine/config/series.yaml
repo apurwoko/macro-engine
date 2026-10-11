@@ -1,0 +1,39 @@
+history_start: "2010-01-01"
+
+fred:
+  - DGS2          # yield UST 2Y
+  - DGS10         # yield UST 10Y
+  - DFII10        # yield riil 10Y (TIPS)
+  - T5YIE         # breakeven inflasi 5Y
+  - T10YIE        # breakeven inflasi 10Y
+  - T10Y2Y        # kurva 10Y-2Y
+  - DTWEXBGS      # indeks dolar luas nominal (BUKAN DXY ICE, tapi korelasinya tinggi)
+  - VIXCLS        # VIX
+  - BAMLH0A0HYM2  # spread kredit high-yield (OAS)
+  - DCOILWTICO    # WTI spot
+  - DCOILBRENTEU  # Brent spot
+  - DFEDTARU      # batas atas target Fed Funds
+  - CPIAUCSL      # CPI headline (bulanan)
+  - CPILFESL      # CPI inti (bulanan)
+  - PCEPILFE      # PCE inti (bulanan)
+  - UNRATE        # pengangguran (bulanan)
+  - PAYEMS        # nonfarm payrolls (bulanan)
+  - WALCL         # neraca The Fed (mingguan)
+  - SP500         # S&P 500 (FRED hanya menyimpan ~10 tahun terakhir)
+
+eia:
+  - WCESTUS1      # stok minyak mentah AS tanpa SPR (mingguan)
+  - WGTSTUS1      # stok bensin
+  - WDISTUS1      # stok distilat
+
+# Jeda publikasi (hari) dari tanggal observasi sampai data benar-benar tersedia.
+# Dipakai agar skor & backtest tidak "mengintip masa depan" (point-in-time).
+# Angka bulanan adalah pendekatan kasar; sempurnakan dengan data ALFRED bila perlu.
+default_lags: {fred: 1, eia: 5, cot: 3, px: 0}
+lags:
+  "fred:CPIAUCSL": 45
+  "fred:CPILFESL": 45
+  "fred:PCEPILFE": 60
+  "fred:UNRATE": 38
+  "fred:PAYEMS": 38
+  "fred:WALCL": 2
