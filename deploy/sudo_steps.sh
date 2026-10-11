@@ -54,7 +54,12 @@ set +a
 # skrip ini SELALU lewat socket lokal (auth_socket root), jadi env itu tidak relevan di sini.
 unset MYSQL_HOST MYSQL_PORT MYSQL_TCP_PORT 2>/dev/null || true
 
-MYSQL_HOST_PATTERN="172.%"    # cocok semua subnet docker 172.x (docker0 + network compose apa pun), lihat KEPUTUSAN #2
+# Override via environment (dipakai di VPS 103.120.170.69, lihat docker-compose.vps.yml):
+#   MYSQL_HOST_PATTERN=localhost SKIP_BIND_ADDRESS=1 bash deploy/sudo_steps.sh
+# -> user macro@localhost (container pakai network host, konek TCP 127.0.0.1) dan bind-address
+#    MySQL TIDAK disentuh (tanpa restart). Default tanpa override = perilaku lama (172.% + docker0).
+MYSQL_HOST_PATTERN="${MYSQL_HOST_PATTERN:-172.%}"    # default: cocok semua subnet docker 172.x, lihat KEPUTUSAN #2
+SKIP_BIND_ADDRESS="${SKIP_BIND_ADDRESS:-0}"
 MYSQLD_CNF="/etc/mysql/mysql.conf.d/mysqld.cnf"
 BIND_ROLLBACK_FILE="$PROJECT_ROOT/deploy/bind_address.rollback"
 TEST_DB_NAME="macro_test"
@@ -65,7 +70,7 @@ TEST_CREDS_FILE="$PROJECT_ROOT/deploy/.test_db_credentials"
 # empiris saat setup (lihat docs/SETUP_LOG.md). Karena itu bind-address MySQL dibuka ke gateway docker0,
 # bukan ke gateway network `macro-engine_default`.
 GATEWAY_IP="$(ip -4 addr show docker0 2>/dev/null | grep -oP 'inet \K[\d.]+' | head -1)"
-if [[ -z "$GATEWAY_IP" ]]; then
+if [[ "$SKIP_BIND_ADDRESS" != "1" && -z "$GATEWAY_IP" ]]; then
   echo "Tidak bisa menemukan alamat IPv4 docker0; cek manual dengan 'ip -4 addr show docker0'" >&2
   exit 1
 fi
@@ -94,7 +99,8 @@ if [[ -f "$TEST_CREDS_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$TEST_CREDS_FILE"
 else
-  MACRO_TEST_DB_PASSWORD="$(openssl rand -hex 16)"
+  # akhiran "-Mx": memenuhi validate_password MEDIUM (huruf besar + karakter spesial) bila plugin aktif
+  MACRO_TEST_DB_PASSWORD="$(openssl rand -hex 16)-Mx"
   umask 077
   cat > "$TEST_CREDS_FILE" <<EOF
 # Dibuat otomatis oleh deploy/sudo_steps.sh - JANGAN commit (sudah di .gitignore).
@@ -122,6 +128,9 @@ SQL
 mysql -u root "${TEST_DB_NAME}" < "$PROJECT_ROOT/db/init/001_schema.sql"
 echo "   OK (idempoten: aman diulang; skema db/init/001_schema.sql dimuat ke '${TEST_DB_NAME}')"
 
+if [[ "$SKIP_BIND_ADDRESS" == "1" ]]; then
+echo "== 4/4  bind-address MySQL: DILEWATI (SKIP_BIND_ADDRESS=1) -> konfigurasi MySQL tidak diubah =="
+else
 echo "== 4/4  bind-address MySQL: pastikan 127.0.0.1 + ${GATEWAY_IP} (gateway docker0) =="
 CURRENT_BIND="$(grep -E '^\s*bind-address' "$MYSQLD_CNF" | head -1 | sed -E 's/^\s*bind-address\s*=\s*//')"
 DESIRED_BIND="127.0.0.1,${GATEWAY_IP}"
@@ -141,6 +150,7 @@ else
   sleep 2
   systemctl is-active --quiet mysql && echo "   mysql restart OK, service aktif" || { echo "   GAGAL: mysql tidak aktif setelah restart" >&2; exit 1; }
 fi
+fi
 
 echo
 echo "SELESAI. Verifikasi dari luar skrip ini (tanpa sudo):"
@@ -156,4 +166,5 @@ echo "  docker compose run --rm api python -c \"from app import db; print(db.sca
 #
 # Untuk mencabut akses (tidak dijalankan otomatis -- lakukan manual bila perlu):
 #   sudo mysql -u root -e "DROP USER IF EXISTS 'macro_test'@'172.%'; DROP DATABASE IF EXISTS macro_test;"
+#   (di VPS dengan MYSQL_HOST_PATTERN=localhost: ganti '172.%' dengan 'localhost')
 # ---------------------------------------------------------------------------

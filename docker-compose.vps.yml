@@ -1,0 +1,22 @@
+# Override KHUSUS VPS 103.120.170.69 — dipakai DI ATAS docker-compose.override.yml.
+# Aktifkan lewat .env:  COMPOSE_FILE=docker-compose.yml:docker-compose.override.yml:docker-compose.vps.yml
+#
+# Alasan: MySQL host di VPS ini dipakai aplikasi lain dan konfigurasinya TIDAK BOLEH diubah
+# (bind-address tetap 127.0.0.1, tanpa restart). Container di bridge network tidak bisa menjangkau
+# 127.0.0.1 milik host, jadi api/scheduler memakai network host dan konek ke MySQL lewat
+# TCP 127.0.0.1:3306 — persis seperti aplikasi lain di VPS ini. User DB: macro@localhost
+# (skip_name_resolve=0 -> koneksi TCP dari 127.0.0.1 cocok dengan host 'localhost').
+#
+# Karena network host: uvicorn WAJIB bind 127.0.0.1 (bukan 0.0.0.0) agar port 8000 tidak terbuka
+# ke internet; `ports` dihapus (tidak berlaku di network host).
+
+services:
+  api:
+    network_mode: host
+    extra_hosts: !reset []
+    ports: !reset []
+    command: uvicorn app.api.main:app --host 127.0.0.1 --port 8000
+
+  scheduler:
+    network_mode: host
+    extra_hosts: !reset []

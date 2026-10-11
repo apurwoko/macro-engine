@@ -133,6 +133,11 @@ Ide lanjutan bila bukti terlalu tipis per aset: pooling aset sejenis (mis. US30+
 Diperbarui 2026-10-11 setelah deployment pertama di mesin nyata (Ubuntu, MySQL 8.0.46 host, Docker
 29.9.0). Kronologi lengkap (termasuk 2 bug yang ditemukan & diperbaiki saat setup): `docs/SETUP_LOG.md`.
 
+**Diverifikasi ulang di VPS produksi 103.120.170.69 (2026-10-11)** dengan `backfill` fresh: 56/56 tes
+lulus, 16/16 simbol Yahoo dari IP datacenter tanpa blokir, kalibrasi identik dengan lokal, `api`+`scheduler`
+live. Di VPS ini MySQL host **tidak diubah** (bind tetap `127.0.0.1`) — container memakai `network_mode: host`
+(`docker-compose.vps.yml`). Lihat `docs/SETUP_LOG.md` § "Migrasi ke VPS 103.120.170.69".
+
 | Bagian | Status |
 |---|---|
 | Logika skor, beta, dekomposisi, skenario, risiko event, parser COT/kalender, sanitasi LLM, jadwal | **Diuji** (unit, data sintetis) — 48 test, lihat `engine/tests/` |
@@ -185,5 +190,5 @@ Diperbarui 2026-10-11 setelah deployment pertama di mesin nyata (Ubuntu, MySQL 8
 1. `backfill` → cek log COT & nama pasar → isi kalender → `calibrate` (panduan server: deploy/VPS_UBUNTU.md).
 2. Pasang dashboard (dashboard/README.md).
 3. Setelah kalibrasi: pangkas faktor yang tidak berkontribusi, hilangkan musiman stok EIA, tambah faktor domestik USD/IDR.
-4. Putuskan soal 2 pasang hari `IDR=X` yang kemungkinan salah (`docs/DATA_QUALITY.md`) dan API_KEY
-   yang masih placeholder (`docs/SETUP_LOG.md` §1) sebelum go-live sungguhan.
+4. Putuskan soal 2 pasang hari `IDR=X` yang kemungkinan salah (`docs/DATA_QUALITY.md`; terkonfirmasi
+   juga di data VPS). `API_KEY` di VPS sudah acak (di-generate di VPS); di mesin lokal masih placeholder.

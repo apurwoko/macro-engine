@@ -156,3 +156,60 @@ manual.
   punya skrip penghapusan otomatis (produksi) — hapus manual bila proyek dibatalkan.
 - **Container**: `docker compose down` (TANPA `-v`) aman menghapus container+network, bukan data
   (data ada di MySQL host, bukan volume Docker, sejak keputusan #1).
+
+---
+
+# Migrasi ke VPS 103.120.170.69 (2026-10-11)
+
+Path `/var/www/macro-engine`, jalan sebagai **root** langsung (keputusan sadar, VPS single-admin).
+Ubuntu 22.04, MySQL `8.0.46-0ubuntu0.22.04.4` (sudah terpasang, **dipakai bersama aplikasi lain**),
+Docker 29.9.0 / Compose v5.6.0 (dipasang di sesi ini dari repo resmi Docker). Tidak ada migrasi data
+dari lokal: `backfill` fresh dari VPS.
+
+## Apa yang berbeda dari setup lokal
+
+| Hal | Lokal | VPS ini | Alasan |
+|---|---|---|---|
+| Transfer kode | — | `git clone` dari GitHub privat (HTTPS + PAT oleh user) | rsync/SSH dari jaringan user di-reset di tengah jalan (bukan oleh VPS: sshd/firewall VPS bersih, koneksi tak tercatat di log sshd) |
+| bind-address MySQL | dibuka ke `127.0.0.1,172.17.0.1` + restart | **TIDAK diubah** (tetap `127.0.0.1`, tanpa restart) | MySQL dipakai aplikasi lain; keputusan user: kondisi MySQL tidak boleh berubah |
+| Jaringan container | bridge + `host.docker.internal` -> docker0 | **`network_mode: host`** untuk `api`/`scheduler` (`docker-compose.vps.yml`), konek TCP `127.0.0.1:3306` | konsekuensi baris di atas; jenis koneksi sama dengan aplikasi lain di VPS |
+| User DB | `macro`@`172.%`, `macro_test`@`172.%` | `macro`@`localhost`, `macro_test`@`localhost` | `skip_name_resolve=0` -> TCP dari 127.0.0.1 cocok dengan host `localhost` |
+| uvicorn | `--host 0.0.0.0` + publish `127.0.0.1:8000` | `--host 127.0.0.1` (network host, tanpa `ports`) | supaya port 8000 tidak terbuka ke internet |
+| Aktivasi override | otomatis (`docker-compose.override.yml`) | `COMPOSE_FILE=docker-compose.yml:docker-compose.override.yml:docker-compose.vps.yml` di `.env` | file VPS tidak boleh mengubah perilaku lokal |
+| `sudo_steps.sh` | default | `MYSQL_HOST_PATTERN=localhost SKIP_BIND_ADDRESS=1 bash deploy/sudo_steps.sh` | override baru, default tetap perilaku lama |
+| ufw | tidak terpasang | **aktif**: default deny incoming; izinkan 22 (OpenSSH), 80/443 (Nginx Full); service di-enable saat boot | VPS publik dengan nginx untuk situs lain |
+| `.env` | — | dibuat dari `.env.example`; `MYSQL_PASSWORD`/`API_KEY`/`MYSQL_ROOT_PASSWORD` di-generate di VPS (tidak pernah dicetak); FRED/EIA diisi user | aturan keamanan sesi |
+
+## Masalah yang ditemukan & diperbaiki
+
+1. **`validate_password` MEDIUM aktif di MySQL VPS** (lokal tidak): `CREATE USER` gagal
+   `ERROR 1819 ... does not satisfy the current policy requirements` karena password hex murni tak
+   punya huruf besar/karakter spesial. Perbaikan: `MYSQL_PASSWORD` di-generate ulang dengan akhiran
+   `-Mx`; `sudo_steps.sh` membuat password `macro_test` dengan pola yang sama. DB `macro` sudah
+   terbuat sebelum error (CREATE DATABASE IF NOT EXISTS), run ulang idempoten sukses.
+2. **`ufw enable` -> `ERROR: problem running`** di percobaan awal; rule ternyata sudah termuat di
+   kernel, `ufw --force enable` berikutnya sukses, tetapi `ufw.service` masih `disabled` (tidak dimuat
+   saat boot) -> `systemctl enable --now ufw`.
+
+## Hasil (bandingkan dengan lokal §5–§9)
+
+- `sudo_steps.sh`: `macro` 13 tabel, `macro_test` 13 tabel, 2 user `@localhost`, bind-address &
+  waktu start mysqld tidak berubah.
+- `docker compose build`: OK (build bersih tanpa cache, Dockerfile tanpa perubahan).
+- Tes: **48 unit + 8 integrasi (`macro_test`) = 56 lulus** — sama dengan lokal. Sesi DB `+00:00`.
+- `backfill` (`logs/backfill_20261011.log`, tanpa ERROR): FRED 19 seri + EIA 3 seri (6512 baris,
+  identik), **Yahoo 16/16 simbol 2010–2026, tanpa rate-limit/blokir dari IP datacenter**, COT 8×666
+  baris (nama pasar CFTC sama), RSS Fed 20/ECB 15/BoE 50 (via `ingest news`).
+- Anomali `IDR=X` 2010-11-01 (888.11) dan 2012-02-07 (892) **muncul juga di VPS** -> konfirmasi error
+  di sumber Yahoo, bukan di mesin.
+- `calibrate` (`reports/calibration_20261011_0727/`, `logs/calibrate_20261011.log`): 12/12 aset,
+  0 DILEWATI, semua TIDAK ADA BUKTI; IC/p **identik** dengan run lokal. `factors.yaml` tidak berubah.
+- Go-live: `api` + `scheduler` Up; `/health` 200; `/bias` tanpa key 401, dengan key 200 (12 item);
+  5 job terjadwal; port 8000 hanya `127.0.0.1`. Telegram/LLM tidak aktif (kunci kosong, sesuai desain).
+
+## Rollback (VPS)
+
+- MySQL: tidak ada perubahan konfigurasi untuk di-rollback. Cabut akses tes:
+  `mysql -u root -e "DROP USER IF EXISTS 'macro_test'@'localhost'; DROP DATABASE IF EXISTS macro_test;"`
+- Container: `docker compose down` (TANPA `-v`).
+- ufw: `ufw disable` (rule tersimpan di `/etc/ufw/user*.rules`).

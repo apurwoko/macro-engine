@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-10-11 (sore) — Migrasi ke VPS 103.120.170.69
+
+Detail & hasil: `docs/SETUP_LOG.md` § "Migrasi ke VPS 103.120.170.69". Tidak ada perubahan kode
+aplikasi (`engine/app/*`), skema, atau `factors.yaml`.
+
+- **`docker-compose.vps.yml`** (baru) — `api`/`scheduler` pakai `network_mode: host`, `ports`/
+  `extra_hosts` di-reset, uvicorn `--host 127.0.0.1`. Alasan: MySQL host di VPS dipakai aplikasi lain
+  dan tidak boleh diubah (bind tetap `127.0.0.1`). Diaktifkan lewat `COMPOSE_FILE` di `.env` VPS saja.
+  Diverifikasi: `docker compose config --no-interpolate`, tes integrasi, `/health`, `/bias`.
+- **`deploy/sudo_steps.sh`** — override env `MYSQL_HOST_PATTERN` (default `172.%`) dan
+  `SKIP_BIND_ADDRESS=1` (lewati ubah bind-address + restart mysql); password `macro_test` kini
+  `<hex16>-Mx` agar lolos `validate_password` MEDIUM. Default tanpa override = perilaku lama.
+  Diverifikasi: dijalankan di VPS (`macro`/`macro_test` 13 tabel, user `@localhost`, mysqld tidak di-restart).
+
 ## 2026-10-11 — Deployment pertama di mesin nyata (MySQL host, bukan container)
 
 ### Kode
